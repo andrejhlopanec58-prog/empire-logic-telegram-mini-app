@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Empire Logic</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+<style>
+:root{font-family:system-ui;background:#0f1117;color:#fff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#171b27,#0d0f14);min-height:100vh}
+main{max-width:520px;margin:auto;padding:18px}.card{background:#1b2030;border:1px solid #2b3245;border-radius:22px;padding:18px;margin:12px 0}
+h1{margin:4px 0 12px}.coins{font-size:32px;font-weight:800}.muted{color:#9ca7bd}
+button{width:100%;border:0;border-radius:15px;padding:15px;margin-top:10px;font-size:16px;font-weight:700;background:#fff;color:#111}
+button.secondary{background:#2a3144;color:#fff}button:disabled{opacity:.5}
+.row{display:flex;gap:10px}.row>*{flex:1}.progress{height:10px;background:#30374a;border-radius:9px;overflow:hidden}.bar{height:100%;background:#7c8cff;width:0}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.answers button{margin:0}
+</style>
+</head>
+<body><main>
+<div class="card">
+  <h1>🏰 Empire Logic</h1>
+  <div class="coins" id="coins">— Coins</div>
+  <div class="muted">⭐ Level <span id="level">—</span> · XP <span id="xp">—</span></div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+</div>
+
+<div class="card">
+  <h2>🧠 Логическая задача</h2>
+  <p id="question">Загрузка...</p>
+  <div class="answers" id="answers"></div>
+</div>
+
+<div class="card">
+  <button id="daily">🎁 Забрать ежедневный бонус</button>
+  <button id="ad" class="secondary">📺 Смотреть рекламу → +50 Coins</button>
+</div>
+<div class="card muted" id="status">Готово.</div>
+</main>
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+
+let user=null, initData=tg?.initData||'';
+let puzzle=null;
+
+function render(){
+ if(!user)return;
+ coins.textContent = `${user.coins.toLocaleString()} Coins`;
+ level.textContent=user.level;
+ xp.textContent=user.xp;
+ bar.style.width=Math.min(100,user.xp/(user.level*100)*100)+'%';
+}
+
+async function api(url, body){
+ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,initData})});
+ const d=await r.json(); if(!r.ok) throw new Error(d.error||'Ошибка'); return d;
+}
+
+function newPuzzle(){
+ const a=Math.floor(Math.random()*9)+2,b=Math.floor(Math.random()*9)+2;
+ const correct=a*b;
+ puzzle={a,b,correct};
+ question.textContent=`Сколько будет ${a} × ${b}?`;
+ const options=new Set([correct]);
+ while(options.size<4) options.add(Math.max(1,correct+Math.floor(Math.random()*15)-7));
+ answers.innerHTML='';
+ [...options].sort(()=>Math.random()-.5).forEach(x=>{
+   const b=document.createElement('button'); b.textContent=x;
+   b.onclick=async()=>{
+     [...answers.children].forEach(x=>x.disabled=true);
+     try{
+       const d=await api('/api/game/finish',{answer:x,expected:puzzle.correct});
+       user=d.user; render();
+       status.textContent=d.correct?`✅ Верно! +${d.reward} Coins`:`❌ Неверно, но +${d.reward} Coins за попытку`;
+       tg?.HapticFeedback?.impactOccurred('light');
+     }catch(e){status.textContent=e.message}
+     setTimeout(newPuzzle,500);
+   };
+   answers.appendChild(b);
+ });
+}
+
+daily.onclick=async()=>{
+ try{const d=await api('/api/daily/claim',{});user=d.user;render();status.textContent=`🎁 +${d.reward} Coins`;}
+ catch(e){status.textContent=e.message}
+};
+
+ad.onclick=async()=>{
+ try{
+   const cfg=await fetch('/api/config').then(r=>r.json());
+   if(!cfg.adsgramBlockId){status.textContent='Сначала укажи ADSGRAM_BLOCK_ID на сервере.';return;}
+   const controller=window.Adsgram?.init({blockId:cfg.adsgramBlockId});
+   if(!controller) throw new Error('AdsGram SDK недоступен');
+   status.textContent='📺 Загружаем рекламу...';
+   await controller.show();
+   const d=await api('/api/ad/reward',{});
+   user=d.user; render(); status.textContent=`🎉 Реклама просмотрена! +${d.reward} Coins`;
+ }catch(e){status.textContent='Реклама не завершена или недоступна.'}
+};
+
+(async()=>{
+ try{
+   const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData})});
+   const d=await r.json(); if(!r.ok) throw new Error(d.error||'Не удалось войти');
+   user=d; render(); newPuzzle();
+ }catch(e){
+   status.textContent='Открой игру через Telegram Mini App.';
+   question.textContent='Ожидание Telegram...';
+ }
+})();
+</script>
+</body></html>
