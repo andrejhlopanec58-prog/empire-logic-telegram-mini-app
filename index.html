@@ -1,113 +1,20 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Empire Logic</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
-<style>
-:root{font-family:system-ui;background:#0f1117;color:#fff}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#171b27,#0d0f14);min-height:100vh}
-main{max-width:520px;margin:auto;padding:18px}.card{background:#1b2030;border:1px solid #2b3245;border-radius:22px;padding:18px;margin:12px 0}
-h1{margin:4px 0 12px}.coins{font-size:32px;font-weight:800}.muted{color:#9ca7bd}
-button{width:100%;border:0;border-radius:15px;padding:15px;margin-top:10px;font-size:16px;font-weight:700;background:#fff;color:#111}
-button.secondary{background:#2a3144;color:#fff}button:disabled{opacity:.5}
-.row{display:flex;gap:10px}.row>*{flex:1}.progress{height:10px;background:#30374a;border-radius:9px;overflow:hidden}.bar{height:100%;background:#7c8cff;width:0}
-.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.answers button{margin:0}
-</style>
-</head>
-<body><main>
-<div class="card">
-  <h1>🏰 Empire Logic</h1>
-  <div class="coins" id="coins">— Coins</div>
-  <div class="muted">⭐ Level <span id="level">—</span> · XP <span id="xp">—</span></div>
-  <div class="progress"><div class="bar" id="bar"></div></div>
-</div>
-
-<div class="card">
-  <h2>🧠 Логическая задача</h2>
-  <p id="question">Загрузка...</p>
-  <div class="answers" id="answers"></div>
-</div>
-
-<div class="card">
-  <button id="daily">🎁 Забрать ежедневный бонус</button>
-  <button id="ad" class="secondary">📺 Смотреть рекламу → +50 Coins</button>
-</div>
-<div class="card muted" id="status">Готово.</div>
-</main>
+<!doctype html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Fruit Factory</title><script src="https://telegram.org/js/telegram-web-app.js"></script><script src="https://sad.adsgram.ai/js/sad.min.js"></script><style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:#10151a;color:#fff}main{max-width:520px;margin:auto;padding:14px}.card{background:#192128;border:1px solid #2a3740;border-radius:20px;padding:16px;margin:10px 0}.top{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#222d35;border-radius:14px;padding:10px;text-align:center}.big{font-size:22px;font-weight:800}button{width:100%;padding:14px;margin-top:8px;border:0;border-radius:14px;font-size:16px;font-weight:800}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.bar{height:9px;background:#303d46;border-radius:8px;overflow:hidden}.fill{height:100%;width:0;background:#82d37a}.muted{color:#9ba8b1}#toast{text-align:center;min-height:24px;padding:5px}
+</style></head><body><main>
+<div class="card"><h1>🍎 Fruit Factory</h1><div class="top"><div class="stat">💰<div class="big" id="coins">—</div>Coins</div><div class="stat">💎<div class="big" id="gems">—</div>Gems</div><div class="stat">⚡<div class="big" id="energy">—</div>Energy</div></div></div>
+<div class="card">⭐ Level <b id="level">—</b> · 🏭 Factory <b id="factory">—</b><div class="bar"><div class="fill" id="xpbar"></div></div></div>
+<div class="card"><h2>🍓 Производство</h2><p class="muted">Собирай фрукты, производи и продавай.</p><div class="row"><button id="collect">🍓 Собрать</button><button id="produce">🏭 Произвести</button></div><button id="sell">💰 Продать партию</button></div>
+<div class="card"><h2>⬆️ Фабрика</h2><p>Цена улучшения: <b id="cost">—</b> Coins</p><button id="upgrade">⬆️ Улучшить</button><button id="prestige">♻️ Престиж с Level 10</button></div>
+<div class="card"><h2>🎁 Награды</h2><button id="daily">🎁 Daily Reward</button><button id="ad">📺 Rewarded Ad → +50 Coins</button></div>
+<div class="card"><h2>🏆 Leaderboard</h2><div id="top" class="muted">Загрузка...</div></div><div id="toast"></div></main>
 <script>
-const tg = window.Telegram?.WebApp;
-tg?.ready(); tg?.expand();
-
-let user=null, initData=tg?.initData||'';
-let puzzle=null;
-
-function render(){
- if(!user)return;
- coins.textContent = `${user.coins.toLocaleString()} Coins`;
- level.textContent=user.level;
- xp.textContent=user.xp;
- bar.style.width=Math.min(100,user.xp/(user.level*100)*100)+'%';
-}
-
-async function api(url, body){
- const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,initData})});
- const d=await r.json(); if(!r.ok) throw new Error(d.error||'Ошибка'); return d;
-}
-
-function newPuzzle(){
- const a=Math.floor(Math.random()*9)+2,b=Math.floor(Math.random()*9)+2;
- const correct=a*b;
- puzzle={a,b,correct};
- question.textContent=`Сколько будет ${a} × ${b}?`;
- const options=new Set([correct]);
- while(options.size<4) options.add(Math.max(1,correct+Math.floor(Math.random()*15)-7));
- answers.innerHTML='';
- [...options].sort(()=>Math.random()-.5).forEach(x=>{
-   const b=document.createElement('button'); b.textContent=x;
-   b.onclick=async()=>{
-     [...answers.children].forEach(x=>x.disabled=true);
-     try{
-       const d=await api('/api/game/finish',{answer:x,expected:puzzle.correct});
-       user=d.user; render();
-       status.textContent=d.correct?`✅ Верно! +${d.reward} Coins`:`❌ Неверно, но +${d.reward} Coins за попытку`;
-       tg?.HapticFeedback?.impactOccurred('light');
-     }catch(e){status.textContent=e.message}
-     setTimeout(newPuzzle,500);
-   };
-   answers.appendChild(b);
- });
-}
-
-daily.onclick=async()=>{
- try{const d=await api('/api/daily/claim',{});user=d.user;render();status.textContent=`🎁 +${d.reward} Coins`;}
- catch(e){status.textContent=e.message}
-};
-
-ad.onclick=async()=>{
- try{
-   const cfg=await fetch('/api/config').then(r=>r.json());
-   if(!cfg.adsgramBlockId){status.textContent='Сначала укажи ADSGRAM_BLOCK_ID на сервере.';return;}
-   const controller=window.Adsgram?.init({blockId:cfg.adsgramBlockId});
-   if(!controller) throw new Error('AdsGram SDK недоступен');
-   status.textContent='📺 Загружаем рекламу...';
-   await controller.show();
-   const d=await api('/api/ad/reward',{});
-   user=d.user; render(); status.textContent=`🎉 Реклама просмотрена! +${d.reward} Coins`;
- }catch(e){status.textContent='Реклама не завершена или недоступна.'}
-};
-
-(async()=>{
- try{
-   const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData})});
-   const d=await r.json(); if(!r.ok) throw new Error(d.error||'Не удалось войти');
-   user=d; render(); newPuzzle();
- }catch(e){
-   status.textContent='Открой игру через Telegram Mini App.';
-   question.textContent='Ожидание Telegram...';
- }
-})();
-</script>
-</body></html>
+const tg=window.Telegram?.WebApp;tg?.ready();tg?.expand();const initData=tg?.initData||"";let U=null;
+const $=x=>document.getElementById(x);
+function render(){if(!U)return;$("coins").textContent=U.coins.toLocaleString();$("gems").textContent=U.gems;$("energy").textContent=U.energy;$("level").textContent=U.level;$("factory").textContent=U.factory;$("cost").textContent=U.upgradeCost.toLocaleString();$("xpbar").style.width=Math.min(100,U.xp/U.xpNeed*100)+"%"}
+function toast(x){$("toast").textContent=x;setTimeout(()=>$("toast").textContent="",2500)}
+async function post(url,extra={}){let r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,...extra})});let d=await r.json();if(!r.ok)throw Error(d.error||"Ошибка");return d}
+async function act(url,extra={}){try{let d=await post(url,extra);if(d.user){U=d.user;render()}if(d.reward)toast("🎉 +"+d.reward+" Coins");tg?.HapticFeedback?.impactOccurred("light")}catch(e){toast("⚠️ "+e.message)}}
+$("collect").onclick=()=>act("/api/collect");$("produce").onclick=()=>act("/api/produce");$("sell").onclick=()=>act("/api/sell");$("upgrade").onclick=()=>act("/api/upgrade");$("daily").onclick=()=>act("/api/daily");$("prestige").onclick=()=>act("/api/prestige");
+$("ad").onclick=async()=>{try{let c=await fetch("/api/config").then(r=>r.json());if(!c.adsgramBlockId)return toast("Укажи ADSGRAM_BLOCK_ID.");let a=window.Adsgram?.init({blockId:c.adsgramBlockId});if(!a)return toast("AdsGram SDK недоступен.");toast("📺 Загружаем рекламу...");await a.show();await act("/api/ad/reward",{idempotencyKey:crypto.randomUUID()})}catch(e){toast("Реклама не завершена или недоступна.")}};
+async function init(){try{let r=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData})});let d=await r.json();if(!r.ok)throw Error(d.error);U=d;render();let a=await fetch("/api/leaderboard").then(r=>r.json());$("top").innerHTML=a.map(x=>`${x.rank}. ${x.name} — 💰 ${x.coins.toLocaleString()} · Lv.${x.level}`).join("<br>")}catch(e){toast("Открой игру через Telegram.")}}init();
+</script></body></html>

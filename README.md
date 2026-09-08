@@ -1,16 +1,15 @@
-# Empire Logic — Telegram Mini App MVP
+# Fruit Factory
 
-A safe starter Telegram Mini App with a logic game, coins, XP, daily reward and AdsGram rewarded-ad adapter.
+Telegram Mini App idle/clicker/economy MVP.
 
-## Setup
-1. Create a bot with @BotFather and keep the token private.
-2. Copy `.env.example` to `.env`.
-3. Put your NEW bot token into `BOT_TOKEN`.
-4. Put your deployed Mini App URL into `WEBAPP_URL`.
-5. Put your AdsGram Rewarded `BLOCK_ID` into `ADSGRAM_BLOCK_ID`.
-6. Run `npm install`.
-7. Run `npm start`.
+Includes Coins, Gems, Energy, production, selling, upgrades, automation-ready progression, daily rewards, prestige, leaderboard, Rewarded AdsGram adapter, Telegram authentication and basic admin statistics.
 
-The Mini App must be served over HTTPS for production. Configure the bot's Mini App URL in @BotFather.
+## Run
+1. Copy `.env.example` to `.env`.
+2. Set a NEW bot token, Mini App URL and AdsGram block ID.
+3. `npm install`
+4. `npm start`
+5. Deploy the app over HTTPS and configure the Mini App URL in @BotFather.
 
-AdsGram is intentionally configured with a block ID placeholder. The SDK is loaded in the web app and a reward is granted only after the rewarded promise resolves. See official AdsGram docs for current requirements.
+The current MVP uses in-memory storage. For production/10k+ users, replace it with PostgreSQL/Prisma/Redis and persistent transactions/idempotency.
+Do not commit `.env` or any bot token.
